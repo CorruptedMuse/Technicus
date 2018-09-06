@@ -1,0 +1,149 @@
+disconnect
+Disconnects the bot from your voice channel after you're done playing music
+
+Example: .disconnect
+-
+
+pause
+Pauses the music the bot is playing
+
+Example: .pause
+-
+
+queue
+Displays the currently playing song, as well as any songs in the queue. Also used to remove songs from the queue.
+
+Example: .queue
+Example: .queue remove title of song
+-
+
+skip
+Stops the currently playing song and goes on to the next song.
+
+Example: .skip
+-
+
+summon
+Summons the bot to the voice channel you're in to play music.
+
+Example: .summon
+
+-
+
+yt
+Queues up a song using youtube_dl. If provided a keyword, will search youtube. Can also take direct URLS from youtube or other websites. The bot must be summoned to a voice channel first.
+
+Example: .yt nyan cat 12 hours
+Example: .yt https://www.youtube.com/watch?v=XJskpfaJH2w
+Example: .yt https://soundcloud.com/tennysonmusic/tomato-land
+-
+
+addrole
+Adds a role to yourself to be pinged. Note that role names are case-sensitive.
+
+Example: .addrole Minecraft
+-
+
+delrole
+Remove a role from yourself. Note that role names are case-sensitive.
+
+Example: .delrole Minecraft
+-
+
+rolelist
+Displays the list of roles you can add/remove from yourself.
+
+Example: .rolelist
+-
+
+help
+Hey! You already did this one!
+
+Example: .help
+-
+
+add
+Add two numbers together.
+
+Example: .add 2 2
+-
+
+roll
+Rolls a dice in NdN format.
+
+Example: .roll 2d8
+-
+
+whoami
+Displays your user information card (join date, user id, location, and bio).
+
+Example: .whoami
+-
+
+whois
+Displays another user's information card (join date, user id, location, and bio).
+
+Example: .whois theCountofKeys
+Example: .whois Kyle C. Sullivan
+Example: .whois @Kyle C. Sullivan
+-
+
+setmy
+Sets your bio or location that is displayed on your user information card.
+
+Example: .setmy bio a lonely man in a lonely world
+Example: .setmy location a lonely world
+-
+
+ping
+Standard "is my internet/Technicus working?" test
+
+Example: .ping
+-
+
+about
+Displays information about this bot. Does it link to github yet? Did muse forget to update this entry?
+
+Example: .about
+-
+
+remindme
+Sets a reminder for yourself. The bot will ping you with your message after your set amount of time.
+
+Example: .remindme "Water house plants" 7d 2h
+Example: .remindme "My recent mentions are too empty" 1m 2s
+-
+
+x
+Posts an xkcd comic with the number given.
+
+Example: .x 292
+-
+
+wizard
+When you wanna dance
+
+Example: .wizard
+-
+
+neelyfiles
+[REDACTED]
+
+Example: .neelyfiles
+-
+
+thanks
+Send your thanks to someone. If no person is specified, Technicus will assume you're thanking the bot.
+
+Example: .thanks
+Example: .thanks theCountofKeys
+Example: .thanks Kyle C. Sullivan
+Example: .thanks @Kyle C. Sullivan
+-
+
+vote
+Democracy! Set up a vote in the channel. If you give it a number at the beginning, it will be the number of minutes the vote lasts for.
+
+Example: .vote "Pineapple on pizza is the best" "Pineapple on pizza is capitalism"
+Example: .vote 8 "Cats" "Dogs" "Axolotl"
+-
