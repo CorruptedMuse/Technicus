@@ -179,7 +179,7 @@ class Music:
                 self.processing_songs = self.processing_songs - 1
                 return await ctx.send("**Error:** Song file too large!")
             self.processing_songs = self.processing_songs - 1
-            self.songs.append([player, player.title, ctx.voice_client, ctx.message.channel, []])
+            self.songs.append([player, ctx.message.author.id, ctx.voice_client, ctx.message.channel, []])
 
             shortened_title = self.title_shorten(player.title)
             await ctx.send('Queued: `{}`'.format(shortened_title))
@@ -234,7 +234,7 @@ class Music:
         for role in ctx.message.author.roles:
             if role.name == "Bot Mod":
                 is_mod = True
-        if is_mod:
+        if is_mod or ctx.message.author.id == self.songs[0][1]:
             await ctx.send("Skipping song...")
             return await self.voice.stop()
 
@@ -286,15 +286,19 @@ class Music:
             if args[0] == "remove":
                 pos = len(self.songs) - 1
                 while pos > 0:
-                    if args[1].lower() in self.songs[pos][1].lower():
+                    if args[1].lower() in self.songs[pos][0].title.lower():
                         if ctx.author.id not in self.songs[pos][4]:
                             self.songs[pos][4].append(ctx.author.id)
-                        shortened_title = self.title_shorten(self.songs[pos][1])
-                        if (len(ctx.message.author.voice.channel.members) - 1 > len(
-                                self.songs[pos][4]) * 2 and not is_mod):
+                        shortened_title = self.title_shorten(self.songs[pos][0].title)
+                        print(self.songs[pos][1])
+                        print(ctx.message.author)
+                        if (len(ctx.message.author.voice.channel.members) - 1 > len(self.songs[pos][4]) * 2
+                                and not is_mod
+                                and not ctx.message.author.id == self.songs[pos][1]):
                             await ctx.send("{0} remove votes registered for `{1}`, need {2} to remove song.".format(
-                                len(self.songs[pos][4]), shortened_title,
-                                (len(ctx.message.author.voice.channel.members) - 1) / 2))
+                                len(self.songs[pos][4]),
+                                shortened_title,
+                                int((len(ctx.message.author.voice.channel.members) - 1) / 2)))
                         else:
                             await ctx.send("Removing `{0}`".format(shortened_title))
                             self.del_song(pos)
@@ -307,7 +311,7 @@ class Music:
                 pos_indicator = "> "
             else:
                 pos_indicator = "{0}.".format(str(pos))
-            shortened_title = self.title_shorten(song[1])
+            shortened_title = self.title_shorten(song[0].title)
             queue_string = "{0}{1}{2}\n".format(queue_string, pos_indicator, shortened_title)
             pos = pos + 1
         if queue_string == "```":
@@ -367,7 +371,7 @@ class Music:
                     self.skip_votes = self.songs[0][4]
                     self.songs[0][2].play(self.songs[0][0],
                                           after=lambda e: print('Player error: %s' % e) if e else None)
-                    shortened_title = self.title_shorten(self.songs[0][1])
+                    shortened_title = self.title_shorten(self.songs[0][0].title)
                     await self.songs[0][3].send('Now playing: `{}`'.format(shortened_title))
             else:
                 await asyncio.sleep(1)
