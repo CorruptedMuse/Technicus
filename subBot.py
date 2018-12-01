@@ -2,6 +2,10 @@ import discord
 import aiohttp
 from aiohttp import web
 import asyncio
+import secrets
+import hmac
+from hashlib import sha1
+from binascii import hexlify
 import re
 import authDeets
 from aiohttp.log import access_logger
@@ -31,6 +35,8 @@ def setup_app(app, *, port=None,
 class Subber():
     def __init__(self, bot):
         self.bot = bot
+        self.secret = None
+        self.request_open = False
         self.app = web.Application()
 
         self.auto_subber = self.bot.loop.create_task(self.renew_sub())
@@ -41,16 +47,24 @@ class Subber():
         setup_app(self.app, port=authDeets.youtube_port)
 
     async def handle_get(self, request):
-        if request.query['hub.topic'] not in sub_channels or request.query['hub.mode'] is 'unsubscribe':
+        if request.query['hub.topic'] not in sub_channels or request.query['hub.mode'] is 'unsubscribe' or not self.request_open:
             print('Invalid subscription request')
             return web.Response(status=404)
         print('Valid sub request to {}'.format(request.query['hub.topic']))
         return web.Response(body=request.query['hub.challenge'])
 
     async def handle_post(self, request):
-        full_feed = ""
-        async for line in request.content:
-            full_feed = "{0}{1}".format(full_feed, str(line)[1:].replace("'",""))
+        sha1_a = request.headers['X-Hub-Signature']
+        
+        body = await request.content.read()
+        hmac_checker = hmac.new(self.secret.encode(), body, sha1)
+        
+        if hexlify(hmac_checker.digest()).decode("utf-8") != sha1_a[5:]:
+            print("False packet alert!")
+            return web.Response(status=200)
+        
+        full_feed = body.decode("utf-8")
+        
         split_delim = ['<', '>']
         regex_patterns = '|'.join(map(re.escape, split_delim))
         parsed_feed = re.split(regex_patterns, full_feed)
@@ -63,6 +77,7 @@ class Subber():
             if elem == 'published':
                 published_date = parsed_feed[pos]
             pos = pos + 1
+        
         if video_id and published_date:
             is_new = True
             video_link = 'https://www.youtube.com/watch?v={}'.format(video_id)
@@ -80,10 +95,13 @@ class Subber():
                 video_list = open("postedVideos.txt", "a")
                 video_list.write("{0}\n".format(video_link))
                 video_list.close()
+        
         return web.Response(status=200)
 
     async def renew_sub(self):
         while True:
+            self.secret = secrets.token_urlsafe(64)
+            self.request_open = True
             for channel in sub_channels:
                 async with aiohttp.ClientSession() as session:
                     data = {
@@ -91,10 +109,12 @@ class Subber():
                         'hub.callback': 'http://{0}:{1}/'.format(authDeets.host_name,
                                                                                  authDeets.youtube_port),
                         'hub.lease_seconds': 432000,
-                        'hub.topic': channel
+                        'hub.topic': channel,
+                        'hub.secret': self.secret
                         }
                     await self.post_data(session, data)
-                await asyncio.sleep(5)
+                await asyncio.sleep(1)
+            self.request_open = False
             await asyncio.sleep(60 * 60 * 24)
             
     async def post_data(self, session, data):

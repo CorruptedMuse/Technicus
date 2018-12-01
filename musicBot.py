@@ -158,7 +158,9 @@ class Music:
             return await ctx.send("**Error:** Music Bot commands are only available in #bot-commands")
         if self.music_off:
             return await ctx.send("**Error:** Music Bot features are currently off")
-        if ctx.voice_client is None or ctx.voice_client.channel is not ctx.message.author.voice.channel:
+        if ctx.voice_client is None:
+            return await ctx.send("**Error:** The bot is not connected to the voice channel you are in")
+        if ctx.voice_client.channel is not ctx.message.author.voice.channel:
             return await ctx.send("**Error:** You must be connected to the voice channel.")
         if len(self.songs) + self.processing_songs >= 30:
             return await ctx.send("**Error:** There can only be a maximum of 30 items in the queue")

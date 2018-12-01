@@ -5,6 +5,7 @@ class Role:
     def __init__(self, bot):
         self.bot = bot
         self.good_roles = self.read_role_arc()
+        self.good_roles.sort()
 
     def write_role_arc(self):
         good_roles_arc = open("goodRoles.txt", "w")
@@ -101,6 +102,7 @@ class Role:
                                                         reason="created by bot by command")
                     await ctx.send("Role has been created")
                     self.good_roles.append(the_role)
+                    self.good_roles.sort()
                     self.write_role_arc()
             else:
                 if edit == "0":

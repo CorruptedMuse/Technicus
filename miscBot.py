@@ -118,28 +118,12 @@ class Misc:
     @commands.command()
     async def about(self, ctx):
         """Tells you about this bot."""
-        about_embed = discord.Embed(title='About Technicus', description="Custom Discord Bot",
-                                    url="https://www.youtube.com/watch?v=XJskpfaJH2w", color=discord.Color.gold())
-        about_embed.set_footer(text=version)
+        about_embed = discord.Embed(title='About Technicus', description="Custom Discord Bot\nhttps://github.com/CorruptedMuse/Technicus",
+                                    url="https://www.youtube.com/watch?v=XJskpfaJH2w",
+                                    color=discord.Color.gold())
+        about_embed.set_footer(text="Version={}".format(version))
         about_embed.set_thumbnail(url=self.bot.user.avatar_url)
         await ctx.send(embed=about_embed)
-
-    @commands.command()
-    async def bridge(self, ctx, guild_name, channel_name, *args_message):
-        """For special-case manual control of Technicus [MOD ONLY]"""
-        if ctx.message.author.id == 227187657715875841:
-            the_channel = discord.utils.get(self.bot.get_all_channels(), guild__name=guild_name, name=channel_name)
-            if the_channel is None:
-                await ctx.send("**Error:** Channel not found!")
-            else:
-                if args_message[0] == ".addRole":
-                    await discord.utils.get(the_channel.guild.members, name=args_message[1]).add_roles(
-                        discord.utils.get(the_channel.guild.roles, name=args_message[2]))
-                else:
-                    the_message = merge_strings(args_message)
-                    await the_channel.send(the_message.replace("|", "\n"))
-        else:
-            await ctx.send("**Error:** You are not allowed to use this command!")
 
     @commands.command()
     async def remindme(self, ctx, remind_mes: str, *time_data: str):
@@ -287,48 +271,31 @@ class Misc:
                 message = "`{0}`, {1}".format(winner[1].replace("`", "'"), message)
         message = ":ballot_box_with_check: Vote has ended! {0}".format(message)
         await ctx.send(message)
-
+    
     @commands.command()
-    async def massdel(self, ctx, numbers):
-        """Delete a lot of channel history [MOD ONLY]"""
-        is_mod = False
-        for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
-                is_mod = True
-        if not is_mod:
-            return await ctx.send("**Error:** You do not have permission to use this command!")
-        log("Mass delete init", ctx.author, ctx.channel, numbers, None)
-        async for elem in ctx.channel.history(limit=int(numbers) + 1):
-            log("Mass Delete", elem.author, elem.channel, elem.content, elem.created_at)
-            await elem.delete()
-
-    @commands.command()
-    async def botban(self, ctx, *args_member):
-        """Prevent someone from using the bot or reverse the ban [MOD ONLY]"""
-        is_mod = False
-        for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
-                is_mod = True
-        if not is_mod:
-            return await ctx.send("**Error:** You do not have permission to use this command!")
-        member = discord.utils.get(ctx.message.guild.members, name=merge_strings(args_member))
-        if member is None:
-            return await ctx.send("**Error:** User not found")
-        if member.id == 227187657715875841:
-            return await ctx.send("**Error:** This user is very important and cannot be banned!")
-        self.cursor.execute("SELECT * FROM botBans")
-        result = self.cursor.fetchall()
-        is_bot_banned = False
-        for r in result:
-            if member.id == r[0]:
-                is_bot_banned = True
-        if is_bot_banned:
-            self.cursor.execute("DELETE FROM botBans WHERE author_id={0}".format(member.id))
-            self.connection.commit()
-            await ctx.send(":sunflower: User now has permission to use the bot")
+    async def opt(self, ctx, dir, channel_name):
+        if ctx.message.channel.name != "bot-commands":
+            return await ctx.send("**Error:** This command is only available in #bot-commands")
+        
+        valid_channels = ["introductions", "general", "questions", "games", "techtalk", "suggestions", "music", "healthy-living", "twitch", "microphoneless", "fanart", "fanprojects", "show-and-tell", "doormonstergifs", "skyvault"]
+        if not channel_name in valid_channels:
+            msg = "**Error:** You can only opt in and out of the following channels:```"
+            for valid_channel in valid_channels:
+                msg = "{0}\n{1}".format(msg, valid_channel)
+            return await ctx.send("{}```".format(msg))
+        
+        the_channel = discord.utils.get(ctx.guild.channels, name=channel_name)
+        if the_channel is None:
+            return await ctx.send("**Error:** Channel not found!")
+        
+        if dir.lower() == "out":
+            await the_channel.set_permissions(ctx.message.author, read_messages=False)
+            log("Channel opt out", ctx.message.author, the_channel, None, None)
+            await ctx.send("You have opted out of channel {}\nCAUTION: You may see discussions you find offensive. Server rules still apply.".format(channel_name))
+        elif dir.lower() == "in":
+            await the_channel.set_permissions(ctx.message.author, overwrite=None)
+            log("Channel opt in", ctx.message.author, the_channel, None, None)
+            await ctx.send("You have opted back in to channel {}".format(channel_name))
         else:
-            sql_command = """INSERT INTO botBans (author_id, time)
-            VALUES ({0}, {1});""".format(member.id, 0)
-            self.cursor.execute(sql_command)
-            self.connection.commit()
-            await ctx.send(":crossed_swords: User no longer has permission to use the bot")
+            await ctx.send("**Error:** Proper usage is .opt in/out channelname")
+            

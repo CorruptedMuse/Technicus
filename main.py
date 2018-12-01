@@ -4,8 +4,10 @@ import authDeets
 import musicBot
 import roleBot
 import subBot
+import modBot
 import miscBot
 from commonFunctions import log
+from openpyxl import Workbook
 import time
 import asyncio
 import sqlite3
@@ -19,6 +21,7 @@ bot.add_cog(musicBot.Music(bot))
 bot.add_cog(roleBot.Role(bot))
 bot.add_cog(miscBot.Misc(bot))
 bot.add_cog(subBot.Subber(bot))
+bot.add_cog(modBot.Mod(bot))
 bot.remove_command("help")
 
 client = discord.Client()
@@ -41,7 +44,16 @@ async def on_member_join(member):
     await asyncio.sleep(2)
     for role in member.roles:
         if role.name == "linked":
-            await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
+            cursor.execute("SELECT * FROM silenced")
+            result = cursor.fetchall()
+            is_silenced = False
+            for r in result:
+                if member.id == r[0]:
+                    is_silenced = True
+            if is_silenced:
+                await member.add_roles(discord.utils.get(member.guild.roles, name="Silenced"))
+            else:
+                await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
 
 
 @bot.event
@@ -72,7 +84,16 @@ async def on_member_update(old_member, new_member):
         if role.name == "linked":
             new_is_patreon = True
     if old_not_patreon and new_is_patreon and not is_roled:
-        await new_member.add_roles(discord.utils.get(new_member.guild.roles, name="Patron"))
+        cursor.execute("SELECT * FROM silenced")
+        result = cursor.fetchall()
+        is_silenced = False
+        for r in result:
+            if new_member.id == r[0]:
+                is_silenced = True
+        if is_silenced:
+            await new_member.add_roles(discord.utils.get(new_member.guild.roles, name="Silenced"))
+        else:
+            await new_member.add_roles(discord.utils.get(new_member.guild.roles, name="Patron"))
     if was_not_roled and old_not_kick and (is_roled or new_is_kick):
         await welcome(old_member)
 
@@ -123,7 +144,7 @@ async def help(ctx, *args_command_name):
     if len(args_command_name) == 0:
         msg = "```This is the Technicus Bot for the Door Monster server! Type .help <command> to get information on the following commands:\n\n"
         for command in bot.all_commands:
-            if command not in ["musicbot", "editrole", "bridge", "massdel", "botban"]:
+            if command not in ["musicbot", "editrole", "bridge", "massdel", "botban", "silence", "lock"]:
                 msg = "{0}{1}\n".format(msg, command)
         msg = "{0}\n Contact CorruptedMuse for additional support```".format(msg)
         return await ctx.send(msg)
@@ -159,6 +180,35 @@ async def on_message(message):
             if role.name == "Bot Mod":
                 is_mod = True
 
+        if message.author.id == 227187657715875841 and message.content.lower()=="system;stats":
+            wb = Workbook()
+            ws = wb.active
+            row = 1
+            await message.channel.send("Storing user info...")
+            for member in message.guild.members:
+                ws['A{}'.format(row)] = member.joined_at
+                ws['B{}'.format(row)] = member.id
+                ws['C{}'.format(row)] = member.name
+                row = row + 1
+            ws1 = wb.create_sheet("Channels")
+            row = 1
+            #for channel in message.guild.text_channels:
+            #    await message.channel.send("""Storing channel <#{}>...""".format(channel.id))
+            #    try:
+            #        async for a_message in channel.history(limit=1000000):
+            #            ws1['A{}'.format(row)] = a_message.created_at
+            #            ws1['B{}'.format(row)] = a_message.channel.id
+            #            ws1['C{}'.format(row)] = a_message.channel.name
+            #            ws1['D{}'.format(row)] = a_message.id
+            #            ws1['E{}'.format(row)] = a_message.author.id
+            #            ws1['F{}'.format(row)] = a_message.author.name
+            #            ws1['G{}'.format(row)] = a_message.content
+            #            row=row+1
+            #    except:
+            #        await message.channel.send("Error in storing channel")
+            wb.save("data1.xlsx")
+            await message.channel.send("Complete.")
+                
         if message.channel.name != "bot-commands" and message.content.startswith('.') and not is_mod:
             silenced = add_spam_time(message.author.id)
             if silenced:
