@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-class Role:
+class Role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.good_roles = self.read_role_arc()

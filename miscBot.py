@@ -8,7 +8,9 @@ from commonFunctions import log, merge_strings
 
 version = 3
 
-class Misc:
+numbers = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "bomb"]
+
+class Misc(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.connection = sqlite3.connect("reminders.db")
@@ -298,4 +300,40 @@ class Misc:
             await ctx.send("You have opted back in to channel {}".format(channel_name))
         else:
             await ctx.send("**Error:** Proper usage is .opt in/out channelname")
+            
+    @commands.command()
+    async def minesweeper(self, ctx, row=10, collumn=10, mines=10):
+        if mines > row*collumn*.8:
+            return await ctx.send("**Error:** Too many mines")
+        
+        if not -1<row<101 or not -1<collumn<101:
+            return await ctx.send("**Error:** Row/collumn out of range")
+        
+        board = [ [ 0 for i in range(collumn) ] for j in range(row) ]
+
+        for mine in range(0,mines):
+            blocked = True
+            while blocked == True:
+                the_row = random.randint(0, row-1)
+                the_collumn = random.randint(0, collumn-1)
+                if board[the_row][the_collumn]!=9:
+                    blocked = False
+            board[the_row][the_collumn] = 9
+            for i in [-1,0,1]:
+                for j in [-1,0,1]:
+                    s_row = the_row + i
+                    s_collumn = the_collumn + j
+                    if (i !=0 or j != 0) and s_row > -1 and s_collumn > -1 and s_row < row and s_collumn < collumn and board[s_row][s_collumn] != 9:
+                        board[s_row][s_collumn] = board[s_row][s_collumn] + 1
+
+        message = ""
+        for row in board:
+            for collumn in row:
+                message = "{0}||:{1}:||".format(message, numbers[collumn])
+            message = "{0}\n".format(message)
+
+        if len(message) > 2000:
+            return await ctx.send("**Error:** Minesweeper board exceeds discord's native message cap")
+        
+        await ctx.send(message[:-1])
             

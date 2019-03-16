@@ -9,7 +9,7 @@ from commonFunctions import log, merge_strings
 version = 3
 
 
-class Mod:
+class Mod(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.connection = sqlite3.connect("reminders.db")
@@ -224,7 +224,10 @@ class Mod:
                             for role in member.roles:
                                 if role.name == "linked":
                                     await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
+                                    
                             log("User unsilenced", member, None, r[1], None)
+                            mod_channel = self.bot.get_channel(496618677228273665)
+                            await mod_channel.send("<@&496616256045056001> User {} has been un-silenced".format(member.name))
                     to_be_deleted.append(r[0])
             for authorID in to_be_deleted:
                 self.cursor.execute("DELETE FROM silenced WHERE authorID={0}".format(authorID))

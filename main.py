@@ -6,6 +6,10 @@ import roleBot
 import subBot
 import modBot
 import miscBot
+import flagdata
+from babel import languages
+from googletrans import Translator
+import re
 from commonFunctions import log
 from openpyxl import Workbook
 import time
@@ -29,8 +33,15 @@ client = discord.Client()
 connection = sqlite3.connect("reminders.db")
 cursor = connection.cursor()
 
+translator = Translator()
+
+translated_messages = []
 noodle_list = []
 
+RE_EMOJI = re.compile('[\U00010000-\U0010ffff]', flags=re.UNICODE)
+
+def strip_emoji(text):
+    return RE_EMOJI.sub(r'', text)
 
 @bot.event
 async def on_ready():
@@ -60,6 +71,17 @@ async def on_member_join(member):
 async def on_member_update(old_member, new_member):
     if old_member.roles != new_member.roles:
         if set(old_member.roles) - set(new_member.roles) == set():
+            role = set(new_member.roles) - set(old_member.roles)
+            if str(role.pop()) == "Controversial":
+                await old_member.send("""#civil-discussion is a place for those two things exactly--discussion and civility. It's a place to exchange ideas with others and broaden your personal horizons. In accordance with the possibly sensitive nature of some of the discussions on this channel, we have a few extra rules and reminders in place in addition to our general rules, which are still very much in effect, as well.
+
+0. This channel has a Two Strike policy. Before anything else, be aware that this channel in particular has a different standard of moderation and consequence. If you commit an infraction of these rules, you will receive one, and only one, warning; upon your second infraction, your permission to participate in this channel will be revoked. If you have any uncertainty about whether or not what you have to say will cross the line, play it safe, scale your comment back, and temper it with kindness.
+
+1. Keep your conversations about ideas, not about people. Think of this as an elaboration on our "no personal attacks" rule. There will be zero tolerance of attacks or criticisms made against specific people (or indeed, groups of specific people) on the basis of their lifestyle, gender, race, religion, culture, or identity. If you want to discuss one of these aspects of someone, you must do it as an address of the idea at large and leave the individual out of it.""")
+                await old_member.send("""2. Discussion is to be encouraged and facilitated, not circumvented or silenced. This is a place for conversations, and more importantly, conversations carried out in good faith. It is necessary, therefore, that all posts be made with the goal and understanding of receiving a response--and quite likely one with a different point of view or opinion. When you go to make a post, think first to yourself, "Am I interested in what other people have to say about this?" No one should operate here under the impression that they will be able to have the "last word" on a given subject, and anyone who tries to prevent or discourage another from expressing their input will receive a strike.
+
+3. Remember that participation is voluntary. This is an opt-in channel, and no one is required to participate in or comment on anything that they don't feel they would like to. In any discussion, at any point, you always have the option to step back and disengage. Have a disagreement with someone and neither of you seem like you're going to budge? Step back and agree to disagree once the conversation has run its course. Someone having a conversation that makes you uncomfortable or angry? Disengage and come back later. All posters are expected to handle themselves with responsibility and maturity, and that means knowing when not to post as much as it does knowing what and how to post.""")
+                await old_member.send("""4. Act always with kindness. Lastly, simply remember that we are all human, and we all deserve kindness. Consider the viewpoints of others with compassion and empathy, and respond to everyone, regardless of agreement or stance, with the goal of improving the discourse. These discussions are supposed to be interesting, they're supposed to be enlightening and comfortable, and hey, they're supposed to be fun.""")
             log("Added Role", old_member, None, set(new_member.roles) - set(old_member.roles), None)
         else:
             log("Deleted Role", old_member, None, set(old_member.roles) - set(new_member.roles), None)
@@ -138,6 +160,72 @@ async def on_message_edit(message1, message2):
     if message1.content == message2.content:
         return
     log("Edited Message", message1.author, message1.channel, message1.content, message2.content)
+    
+@bot.event
+async def on_raw_reaction_add(payload):
+    emoji = payload.emoji
+    message_id = payload.message_id
+    channel_id = payload.channel_id
+    member_id = payload.user_id
+    channel = bot.get_channel(channel_id)
+    
+    the_message = None
+    async for message in channel.history(limit=50):
+        if message.id == message_id:
+            the_message = message
+    if the_message:
+        member = the_message.guild.get_member(member_id)
+        member_permissions = channel.permissions_for(member)
+        
+        cursor.execute("SELECT * FROM botBans")
+        result = cursor.fetchall()
+        for r in result:
+            if member.id == r[0]:
+                return
+        
+        if member_permissions.send_messages and emoji.is_unicode_emoji() and the_message.content is not "":
+            for flag in flagdata.flags:
+                if emoji.name == flag['emoji']:
+                    if flag['code'] == "US":
+                        lang_code = "en"
+                    else:
+                        try:
+                            lang_code = languages.get_official_languages(flag['code'])[0]
+                        except:
+                            return
+                    if lang_code:
+                        list_pos = 1
+                        has_entry = False
+                        while list_pos < len(translated_messages) and not has_entry:
+                            has_entry = translated_messages[list_pos][0] == message_id
+                            list_pos = list_pos + 1
+                        list_pos = list_pos - 1
+                        if has_entry:
+                            if lang_code in translated_messages[list_pos][1]:
+                                return
+                            translated_messages[list_pos][1].append(lang_code)
+                        else:
+                            translated_messages.append([message_id, [lang_code]])
+                        translated = translator.translate(strip_emoji(the_message.content), dest=lang_code)
+                        if translated.src == lang_code:
+                            return
+                            
+                        is_mod = False
+                        for role in member.roles:
+                            if role.name == "Bot Mod":
+                                is_mod = True
+                        
+                        trans_embed = discord.Embed(title="Translating from **{0}** to **{1}**...".format(translated.src, lang_code), description=translated.text)
+                        trans_embed.set_author(name=the_message.author.display_name, icon_url=the_message.author.avatar_url)
+                        trans_embed.set_footer(text="Requested by {}".format(member.display_name), icon_url=member.avatar_url)
+                        if channel.name != "bot-commands" and not is_mod:
+                            bot_silenced = add_spam_time(member.id)
+                            if bot_silenced:
+                                await member.send("Do not spam the bot outside #bot-commands, please wait a bit before using the bot again")
+                            else:
+                                await channel.send(embed=trans_embed)
+                        else:
+                            await channel.send(embed=trans_embed)
 
 @bot.command()
 async def help(ctx, *args_command_name):

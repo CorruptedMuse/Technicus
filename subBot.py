@@ -10,6 +10,7 @@ import re
 import authDeets
 from aiohttp.log import access_logger
 import time
+from commonFunctions import log, merge_strings
 
 sub_channels = ['https://www.youtube.com/xml/feeds/videos.xml?channel_id=UC-to_wlckb-bFDtQfUZL3Kw', 'https://www.youtube.com/xml/feeds/videos.xml?channel_id=UCEKIj6NNGxofLy0dJnFthMg']
 
@@ -30,13 +31,18 @@ def setup_app(app, *, port=None,
                                  reuse_address=reuse_address,
                                  reuse_port=reuse_port)
     loop.run_until_complete(site.start())
+    
+def archive_feed(feed):
+    example_feed = open("badfeed.xml", "w")
+    example_feed.write(feed)
+    example_feed.close()
 
 
-class Subber():
+class Subber(discord.ext.commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.secret = None
-        self.request_open = False
+        self.request_open = 0
         self.app = web.Application()
 
         self.auto_subber = self.bot.loop.create_task(self.renew_sub())
@@ -47,10 +53,11 @@ class Subber():
         setup_app(self.app, port=authDeets.youtube_port)
 
     async def handle_get(self, request):
-        if request.query['hub.topic'] not in sub_channels or request.query['hub.mode'] is 'unsubscribe' or not self.request_open:
+        if request.query['hub.topic'] not in sub_channels or request.query['hub.mode'] is 'unsubscribe' or self.request_open == 0:
             print('Invalid subscription request')
             return web.Response(status=404)
         print('Valid sub request to {}'.format(request.query['hub.topic']))
+        self.request_open = self.request_open - 1
         return web.Response(body=request.query['hub.challenge'])
 
     async def handle_post(self, request):
@@ -95,13 +102,21 @@ class Subber():
                 video_list = open("postedVideos.txt", "a")
                 video_list.write("{0}\n".format(video_link))
                 video_list.close()
+        else:
+            archive_feed(full_feed)
+            if videoId:
+                log("Error, could not retreive published_date", None, None, None, None)
+            elif published_date:
+                log("Error, could not retreive videoId", None, None, None, None)
+            else:
+                log("Error, could not retreive videoId or published_date", None, None, None, None)
         
         return web.Response(status=200)
 
     async def renew_sub(self):
         while True:
             self.secret = secrets.token_urlsafe(64)
-            self.request_open = True
+            self.request_open = 2
             for channel in sub_channels:
                 async with aiohttp.ClientSession() as session:
                     data = {
@@ -114,7 +129,6 @@ class Subber():
                         }
                     await self.post_data(session, data)
                 await asyncio.sleep(1)
-            self.request_open = False
             await asyncio.sleep(60 * 60 * 24)
             
     async def post_data(self, session, data):
