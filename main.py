@@ -4,6 +4,7 @@ import authDeets
 import musicBot
 import roleBot
 import subBot
+import wobBot
 import modBot
 import miscBot
 import flagdata
@@ -25,6 +26,7 @@ bot.add_cog(musicBot.Music(bot))
 bot.add_cog(roleBot.Role(bot))
 bot.add_cog(miscBot.Misc(bot))
 bot.add_cog(subBot.Subber(bot))
+bot.add_cog(wobBot.Subber(bot))
 bot.add_cog(modBot.Mod(bot))
 bot.remove_command("help")
 
