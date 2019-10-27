@@ -4,7 +4,9 @@ import sqlite3
 import random
 import time
 import asyncio
-from commonFunctions import log, merge_strings
+from commonFunctions import log, merge_strings, find_user
+import authDeets
+from peony import PeonyClient
 
 version = 3
 
@@ -16,6 +18,9 @@ class Misc(commands.Cog):
         self.connection = sqlite3.connect("reminders.db")
         self.cursor = self.connection.cursor()
         self.active_votes = []
+        self.twitter_client = PeonyClient(consumer_key=authDeets.consumer_key, consumer_secret=authDeets.consumer_secret, access_token=authDeets.access_token, access_token_secret=authDeets.access_token_secret)
+        self.twitter_update_loop = self.bot.loop.create_task(self.twitter_update())
+        self.last_twitter_update = None
 
     @commands.command()
     async def add(self, ctx, left: int, right: int):
@@ -37,6 +42,7 @@ class Misc(commands.Cog):
         else:
             result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
             await ctx.send(":game_die: {0} :game_die:".format(result))
+        return 0
 
     @commands.command()
     async def whoami(self, ctx):
@@ -47,18 +53,13 @@ class Misc(commands.Cog):
                                          ctx.message.author, user_data[0].replace("Ё", "'"),
                                          user_data[1].replace("Ё", "'")),
                                      color=discord.Color.gold())
-        # whoami_embed.set_footer(text=version)
         whoami_embed.set_thumbnail(url=ctx.message.author.avatar_url)
         await ctx.send(embed=whoami_embed)
 
     @commands.command()
-    async def whois(self, ctx, *args_member):
+    async def whois(self, ctx, *args):
         """Tells you someone else's identity"""
-        member = discord.utils.get(ctx.message.guild.members, name=merge_strings(args_member))
-        if member is None:
-            member = discord.utils.get(ctx.message.guild.members, nick=merge_strings(args_member))
-        if member is None and len(ctx.message.mentions) is not 0:
-            member = ctx.message.mentions[0]
+        member = find_user(ctx.message, args)
         if member is None:
             return await ctx.send("**Error:** User not found")
         user_data = self.get_info(member.id)
@@ -66,7 +67,6 @@ class Misc(commands.Cog):
                                     description='**Join Date:** {0.joined_at} \n**User ID:** {0.id} \n**Location:** {1} \n**Bio:** {2}'.format(
                                         member, user_data[0].replace("Ё", "'"), user_data[1].replace("Ё", "'")),
                                     color=discord.Color.gold())
-        # whois_embed.set_footer(text=version)
         whois_embed.set_thumbnail(url=member.avatar_url)
         await ctx.send(embed=whois_embed)
 
@@ -192,11 +192,7 @@ class Misc(commands.Cog):
         """Give thanks to someone or the bot"""
         if len(args) == 0:
             return await ctx.send(":sun_with_face: You're welcome!")
-        member = discord.utils.get(ctx.message.guild.members, name=merge_strings(args))
-        if member is None:
-            member = discord.utils.get(ctx.message.guild.members, nick=merge_strings(args))
-        if member is None and len(ctx.message.mentions) is not 0:
-            member = ctx.message.mentions[0]
+        member = find_user(ctx.message, args)
         if member is None:
             return await ctx.send("**Error:** User not found")
         message = ":gift: Giving thanks to <@{0}>".format(member.id)
@@ -273,33 +269,6 @@ class Misc(commands.Cog):
                 message = "`{0}`, {1}".format(winner[1].replace("`", "'"), message)
         message = ":ballot_box_with_check: Vote has ended! {0}".format(message)
         await ctx.send(message)
-    
-    @commands.command()
-    async def opt(self, ctx, dir, channel_name):
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** This command is only available in #bot-commands")
-        
-        valid_channels = ["introductions", "general", "questions", "games", "techtalk", "suggestions", "music", "healthy-living", "twitch", "microphoneless", "fanart", "fanprojects", "show-and-tell", "doormonstergifs", "skyvault"]
-        if not channel_name in valid_channels:
-            msg = "**Error:** You can only opt in and out of the following channels:```"
-            for valid_channel in valid_channels:
-                msg = "{0}\n{1}".format(msg, valid_channel)
-            return await ctx.send("{}```".format(msg))
-        
-        the_channel = discord.utils.get(ctx.guild.channels, name=channel_name)
-        if the_channel is None:
-            return await ctx.send("**Error:** Channel not found!")
-        
-        if dir.lower() == "out":
-            await the_channel.set_permissions(ctx.message.author, read_messages=False)
-            log("Channel opt out", ctx.message.author, the_channel, None, None)
-            await ctx.send("You have opted out of channel {}\nCAUTION: You may see discussions you find offensive. Server rules still apply.".format(channel_name))
-        elif dir.lower() == "in":
-            await the_channel.set_permissions(ctx.message.author, overwrite=None)
-            log("Channel opt in", ctx.message.author, the_channel, None, None)
-            await ctx.send("You have opted back in to channel {}".format(channel_name))
-        else:
-            await ctx.send("**Error:** Proper usage is .opt in/out channelname")
             
     @commands.command()
     async def minesweeper(self, ctx, row=10, collumn=10, mines=10):
@@ -336,4 +305,21 @@ class Misc(commands.Cog):
             return await ctx.send("**Error:** Minesweeper board exceeds discord's native message cap")
         
         await ctx.send(message[:-1])
+        
+    async def twitter_update(self):
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            recent = None
+            data = await self.twitter_client.api.statuses.user_timeline.get(screen_name='DoorMonster', count=1)
+            recent = data[0]['id']
+            if recent:
+                if self.last_twitter_update is None:
+                    self.last_twitter_update = recent
+                if self.last_twitter_update != recent:
+                    self.last_twitter_update = recent
+                    the_channel = discord.utils.get(bot.get_all_channels(), guild__name="Door Monster",
+                                                name="announcements")
+                    await the_channel.send("https://twitter.com/DoorMonster/status/{0}".format(recent))
+                    log("Twitter update", None, None, self.last_twitter_update, None)
+            await asyncio.sleep(60)
             

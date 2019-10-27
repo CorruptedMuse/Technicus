@@ -4,7 +4,6 @@ import authDeets
 import musicBot
 import roleBot
 import subBot
-import wobBot
 import modBot
 import miscBot
 import flagdata
@@ -26,7 +25,6 @@ bot.add_cog(musicBot.Music(bot))
 bot.add_cog(roleBot.Role(bot))
 bot.add_cog(miscBot.Misc(bot))
 bot.add_cog(subBot.Subber(bot))
-bot.add_cog(wobBot.Subber(bot))
 bot.add_cog(modBot.Mod(bot))
 bot.remove_command("help")
 
@@ -55,35 +53,28 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
     await asyncio.sleep(2)
+    cursor.execute("SELECT * FROM silenced")
+    result = cursor.fetchall()
+    for r in result:
+        if member.id == r[0]:
+            return await member.add_roles(discord.utils.get(member.guild.roles, name="Silenced"))
+            
+    cursor.execute("SELECT * FROM wobsiteauths")
+    result = cursor.fetchall()
+    for r in result:
+        if member.id == r[0]:
+            return await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
+         
     for role in member.roles:
         if role.name == "linked":
-            cursor.execute("SELECT * FROM silenced")
-            result = cursor.fetchall()
-            is_silenced = False
-            for r in result:
-                if member.id == r[0]:
-                    is_silenced = True
-            if is_silenced:
-                await member.add_roles(discord.utils.get(member.guild.roles, name="Silenced"))
-            else:
-                await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
+            await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
+    
 
 
 @bot.event
 async def on_member_update(old_member, new_member):
     if old_member.roles != new_member.roles:
         if set(old_member.roles) - set(new_member.roles) == set():
-            role = set(new_member.roles) - set(old_member.roles)
-            if str(role.pop()) == "Controversial":
-                await old_member.send("""#civil-discussion is a place for those two things exactly--discussion and civility. It's a place to exchange ideas with others and broaden your personal horizons. In accordance with the possibly sensitive nature of some of the discussions on this channel, we have a few extra rules and reminders in place in addition to our general rules, which are still very much in effect, as well.
-
-0. This channel has a Two Strike policy. Before anything else, be aware that this channel in particular has a different standard of moderation and consequence. If you commit an infraction of these rules, you will receive one, and only one, warning; upon your second infraction, your permission to participate in this channel will be revoked. If you have any uncertainty about whether or not what you have to say will cross the line, play it safe, scale your comment back, and temper it with kindness.
-
-1. Keep your conversations about ideas, not about people. Think of this as an elaboration on our "no personal attacks" rule. There will be zero tolerance of attacks or criticisms made against specific people (or indeed, groups of specific people) on the basis of their lifestyle, gender, race, religion, culture, or identity. If you want to discuss one of these aspects of someone, you must do it as an address of the idea at large and leave the individual out of it.""")
-                await old_member.send("""2. Discussion is to be encouraged and facilitated, not circumvented or silenced. This is a place for conversations, and more importantly, conversations carried out in good faith. It is necessary, therefore, that all posts be made with the goal and understanding of receiving a response--and quite likely one with a different point of view or opinion. When you go to make a post, think first to yourself, "Am I interested in what other people have to say about this?" No one should operate here under the impression that they will be able to have the "last word" on a given subject, and anyone who tries to prevent or discourage another from expressing their input will receive a strike.
-
-3. Remember that participation is voluntary. This is an opt-in channel, and no one is required to participate in or comment on anything that they don't feel they would like to. In any discussion, at any point, you always have the option to step back and disengage. Have a disagreement with someone and neither of you seem like you're going to budge? Step back and agree to disagree once the conversation has run its course. Someone having a conversation that makes you uncomfortable or angry? Disengage and come back later. All posters are expected to handle themselves with responsibility and maturity, and that means knowing when not to post as much as it does knowing what and how to post.""")
-                await old_member.send("""4. Act always with kindness. Lastly, simply remember that we are all human, and we all deserve kindness. Consider the viewpoints of others with compassion and empathy, and respond to everyone, regardless of agreement or stance, with the goal of improving the discourse. These discussions are supposed to be interesting, they're supposed to be enlightening and comfortable, and hey, they're supposed to be fun.""")
             log("Added Role", old_member, None, set(new_member.roles) - set(old_member.roles), None)
         else:
             log("Deleted Role", old_member, None, set(old_member.roles) - set(new_member.roles), None)
@@ -282,20 +273,20 @@ async def on_message(message):
                 row = row + 1
             ws1 = wb.create_sheet("Channels")
             row = 1
-            #for channel in message.guild.text_channels:
-            #    await message.channel.send("""Storing channel <#{}>...""".format(channel.id))
-            #    try:
-            #        async for a_message in channel.history(limit=1000000):
-            #            ws1['A{}'.format(row)] = a_message.created_at
-            #            ws1['B{}'.format(row)] = a_message.channel.id
-            #            ws1['C{}'.format(row)] = a_message.channel.name
-            #            ws1['D{}'.format(row)] = a_message.id
-            #            ws1['E{}'.format(row)] = a_message.author.id
-            #            ws1['F{}'.format(row)] = a_message.author.name
-            #            ws1['G{}'.format(row)] = a_message.content
-            #            row=row+1
-            #    except:
-            #        await message.channel.send("Error in storing channel")
+            for channel in message.guild.text_channels:
+                await message.channel.send("""Storing channel <#{}>...""".format(channel.id))
+                try:
+                    async for a_message in channel.history(limit=1000000):
+                        ws1['A{}'.format(row)] = a_message.created_at
+                        ws1['B{}'.format(row)] = a_message.channel.id
+                        ws1['C{}'.format(row)] = a_message.channel.name
+                        ws1['D{}'.format(row)] = a_message.id
+                        ws1['E{}'.format(row)] = a_message.author.id
+                        ws1['F{}'.format(row)] = a_message.author.name
+                        ws1['G{}'.format(row)] = a_message.content
+                        row=row+1
+                except:
+                    await message.channel.send("Error in storing channel")
             wb.save("data1.xlsx")
             await message.channel.send("Complete.")
                 
@@ -361,6 +352,13 @@ def add_spam_time(author_id):
         noodle_list.append([author_id, 60])
         return False
 
+async def keep_activity_up():
+    await bot.wait_until_ready()
+    while not bot.is_closed():
+        await asyncio.sleep(3600)
+        await bot.change_presence(activity=discord.Game(name='with your code'))
+
 bot.loop.create_task(remind_user())
 bot.loop.create_task(spamreduce())
+bot.loop.create_task(keep_activity_up())
 bot.run(authDeets.token)
