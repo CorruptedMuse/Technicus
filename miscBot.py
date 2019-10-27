@@ -18,7 +18,6 @@ class Misc(commands.Cog):
         self.connection = sqlite3.connect("reminders.db")
         self.cursor = self.connection.cursor()
         self.active_votes = []
-        self.twitter_client = PeonyClient(consumer_key=authDeets.consumer_key, consumer_secret=authDeets.consumer_secret, access_token=authDeets.access_token, access_token_secret=authDeets.access_token_secret)
         self.twitter_update_loop = self.bot.loop.create_task(self.twitter_update())
         self.last_twitter_update = None
 
@@ -310,7 +309,8 @@ class Misc(commands.Cog):
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             recent = None
-            data = await self.twitter_client.api.statuses.user_timeline.get(screen_name='DoorMonster', count=1)
+            twitter_client = PeonyClient(consumer_key=authDeets.consumer_key, consumer_secret=authDeets.consumer_secret, access_token=authDeets.access_token, access_token_secret=authDeets.access_token_secret)
+            data = await twitter_client.api.statuses.user_timeline.get(screen_name='DoorMonster', count=1)
             recent = data[0]['id']
             if recent:
                 if self.last_twitter_update is None:
@@ -321,5 +321,5 @@ class Misc(commands.Cog):
                                                 name="announcements")
                     await the_channel.send("https://twitter.com/DoorMonster/status/{0}".format(recent))
                     log("Twitter update", None, None, self.last_twitter_update, None)
-            await asyncio.sleep(60)
+            await asyncio.sleep(300)
             
