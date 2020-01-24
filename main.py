@@ -6,6 +6,7 @@ import roleBot
 import subBot
 import modBot
 import miscBot
+import connectBot
 import flagdata
 from babel import languages
 from googletrans import Translator
@@ -26,6 +27,7 @@ bot.add_cog(roleBot.Role(bot))
 bot.add_cog(miscBot.Misc(bot))
 bot.add_cog(subBot.Subber(bot))
 bot.add_cog(modBot.Mod(bot))
+bot.add_cog(connectBot.Connect(bot))
 bot.remove_command("help")
 
 client = discord.Client()
