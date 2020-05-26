@@ -131,7 +131,7 @@ class Misc(commands.Cog):
         """Make a reminder for yourself"""
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
         if ("@everyone" in remind_mes or "@here" in remind_mes) and not is_mod:
             return await ctx.send("**Error:** Message contains use of mentions you are not allowed to use!")
@@ -308,18 +308,24 @@ class Misc(commands.Cog):
     async def twitter_update(self):
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
-            recent = None
-            twitter_client = PeonyClient(consumer_key=authDeets.consumer_key, consumer_secret=authDeets.consumer_secret, access_token=authDeets.access_token, access_token_secret=authDeets.access_token_secret)
-            data = await twitter_client.api.statuses.user_timeline.get(screen_name='DoorMonster', count=1)
-            recent = data[0]['id']
-            if recent:
-                if self.last_twitter_update is None:
-                    self.last_twitter_update = recent
-                if self.last_twitter_update != recent:
-                    self.last_twitter_update = recent
-                    the_channel = discord.utils.get(bot.get_all_channels(), guild__name="Door Monster",
-                                                name="announcements")
-                    await the_channel.send("https://twitter.com/DoorMonster/status/{0}".format(recent))
-                    log("Twitter update", None, None, self.last_twitter_update, None)
-            await asyncio.sleep(300)
+            try:
+                recent = None
+                twitter_client = PeonyClient(consumer_key=authDeets.consumer_key, consumer_secret=authDeets.consumer_secret, access_token=authDeets.access_token, access_token_secret=authDeets.access_token_secret)
+                data = await twitter_client.api.statuses.user_timeline.get(screen_name='DoorMonster', count=1)
+                recent = data[0]['id']
+                if recent:
+                    if self.last_twitter_update is None:
+                        self.last_twitter_update = recent
+                        print("Twitter link established, got tweet {}".format(recent))
+                    if self.last_twitter_update != recent:
+                        self.last_twitter_update = recent
+                        if data[0]['in_reply_to_status_id'] is None and not data[0]['text'].startswith('RT @'):
+                            the_channel = discord.utils.get(self.bot.get_all_channels(), guild__name="Door Monster",
+                                                name="social-media-feed")
+                            await the_channel.send("https://twitter.com/DoorMonster/status/{0}".format(recent))
+                            log("Twitter update", None, None, self.last_twitter_update, None)
+                await asyncio.sleep(300)
+            except:
+                print("Error retreiving tweet, sleeping")
+                await asyncio.sleep(3000)
             

@@ -67,7 +67,7 @@ class Subber(discord.ext.commands.Cog):
         
     async def gen_channel(self):
         await self.bot.wait_until_ready()
-        self.the_channel = discord.utils.get(self.bot.get_all_channels(), guild__name="Door Monster", name="announcements")
+        self.the_channel = discord.utils.get(self.bot.get_all_channels(), guild__name="Door Monster", name="social-media-feed")
 
     async def handle_youtube_get(self, request):
         if request.query['hub.topic'] not in sub_channels or request.query['hub.mode'] is 'unsubscribe' or self.request_open == 0:
@@ -190,7 +190,7 @@ class Subber(discord.ext.commands.Cog):
         member = discord.utils.get(self.the_channel.guild.members, id=int(json_feed))
         
         if member:
-            await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
+            await member.add_roles(discord.utils.get(member.guild.roles, name="Website Supporter"))
         
         return web.Response(status=200)
 

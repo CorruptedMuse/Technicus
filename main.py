@@ -11,8 +11,8 @@ import flagdata
 from babel import languages
 from googletrans import Translator
 import re
+import os
 from commonFunctions import log
-from openpyxl import Workbook
 import time
 import asyncio
 import sqlite3
@@ -48,13 +48,12 @@ def strip_emoji(text):
 @bot.event
 async def on_ready():
     print("Logged in as: {0}, with the ID of: {1}".format(bot.user, bot.user.id))
-    await bot.change_presence(activity=discord.Game(name='with your code'))
+    await bot.change_presence(activity=discord.Game(name='Message me for modmail'))
     print("--")
 
 
 @bot.event
 async def on_member_join(member):
-    await asyncio.sleep(2)
     cursor.execute("SELECT * FROM silenced")
     result = cursor.fetchall()
     for r in result:
@@ -65,12 +64,8 @@ async def on_member_join(member):
     result = cursor.fetchall()
     for r in result:
         if member.id == r[0]:
-            return await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
-         
-    for role in member.roles:
-        if role.name == "linked":
-            await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
-    
+            return await member.add_roles(discord.utils.get(member.guild.roles, name="Website Supporter"))
+    await welcome(member)
 
 
 @bot.event
@@ -80,39 +75,14 @@ async def on_member_update(old_member, new_member):
             log("Added Role", old_member, None, set(new_member.roles) - set(old_member.roles), None)
         else:
             log("Deleted Role", old_member, None, set(old_member.roles) - set(new_member.roles), None)
-    old_not_patreon = True
-    old_not_kick = True
-    new_is_patreon = False
-    new_is_kick = False
-    is_roled = False
-    was_not_roled = True
-    for role in old_member.roles:
-        if role.name == "linked":
-            old_not_patreon = False
-        if role.name == "Patron":
-            was_not_roled = False
-        if role.name == "KickstarterBacker":
-            old_not_kick = False
-    for role in new_member.roles:
-        if role.name == "KickstarterBacker":
-            new_is_kick = True
-        if role.name == "Patron":
-            is_roled = True
-        if role.name == "linked":
-            new_is_patreon = True
-    if old_not_patreon and new_is_patreon and not is_roled:
-        cursor.execute("SELECT * FROM silenced")
-        result = cursor.fetchall()
-        is_silenced = False
-        for r in result:
-            if new_member.id == r[0]:
-                is_silenced = True
-        if is_silenced:
-            await new_member.add_roles(discord.utils.get(new_member.guild.roles, name="Silenced"))
-        else:
-            await new_member.add_roles(discord.utils.get(new_member.guild.roles, name="Patron"))
-    if was_not_roled and old_not_kick and (is_roled or new_is_kick):
-        await welcome(old_member)
+    cursor.execute("SELECT * FROM silenced")
+    result = cursor.fetchall()
+    is_silenced = False
+    for r in result:
+        if new_member.id == r[0]:
+            is_silenced = True
+    if is_silenced:
+        await new_member.add_roles(discord.utils.get(new_member.guild.roles, name="Silenced"))
 
 
 async def welcome(member):
@@ -121,28 +91,23 @@ async def welcome(member):
                               description='Join Date: {} UTC'.format(str(member.joined_at)[:19]), color=discord.Color.green())
     join_embed.set_footer(text='User Joined')
     join_embed.set_thumbnail(url=member.avatar_url)
-    await discord.utils.get(guild.channels, name='introductions').send(embed=join_embed)
+    await discord.utils.get(guild.channels, name='in-and-out').send(embed=join_embed)
     log("Joined", member, None, None, None)
 
 
 @bot.event
 async def on_member_remove(member):
-    is_roled = False
-    for role in member.roles:
-        if role.name == "Patron" or role.name == "KickstarterBacker":
-            is_roled = True
-    if is_roled:
-        guild = member.guild
-        cursor.execute("DELETE FROM reminders WHERE authorID={0}".format(member.id))
-        cursor.execute("DELETE FROM userInfo WHERE authorID={0}".format(member.id))
-        connection.commit()
-        leave_embed = discord.Embed(title="{} has left the server.".format(member),
-                                   description='Leave Date: {} UTC'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())),
-                                   color=discord.Color.red())
-        leave_embed.set_footer(text='User Left')
-        leave_embed.set_thumbnail(url=member.avatar_url)
-        await discord.utils.get(member.guild.channels, name='introductions').send(embed=leave_embed)
-        log("Left Guild", member, None, None, None)
+    guild = member.guild
+    cursor.execute("DELETE FROM reminders WHERE authorID={0}".format(member.id))
+    cursor.execute("DELETE FROM userInfo WHERE authorID={0}".format(member.id))
+    connection.commit()
+    leave_embed = discord.Embed(title="{} has left the server.".format(member),
+                               description='Leave Date: {} UTC'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())),
+                               color=discord.Color.red())
+    leave_embed.set_footer(text='User Left')
+    leave_embed.set_thumbnail(url=member.avatar_url)
+    await discord.utils.get(member.guild.channels, name='in-and-out').send(embed=leave_embed)
+    log("Left Guild", member, None, None, None)
 
 
 @bot.event
@@ -153,6 +118,8 @@ async def on_message_delete(message):
 @bot.event
 async def on_message_edit(message1, message2):
     if message1.content == message2.content:
+        return
+    if message1.author.id == bot.user.id:
         return
     log("Edited Message", message1.author, message1.channel, message1.content, message2.content)
     
@@ -207,7 +174,7 @@ async def on_raw_reaction_add(payload):
                             
                         is_mod = False
                         for role in member.roles:
-                            if role.name == "Bot Mod":
+                            if role.name == "Moderators":
                                 is_mod = True
                         
                         trans_embed = discord.Embed(title="Translating from **{0}** to **{1}**...".format(translated.src, lang_code), description=translated.text)
@@ -258,49 +225,77 @@ async def on_message(message):
         if message.author.id == r[0]:
             is_bot_banned = True
     if message.author.id != bot.user.id and not is_bot_banned:
-        is_mod = False
-        for role in message.author.roles:
-            if role.name == "Bot Mod":
-                is_mod = True
+        if isinstance(message.channel, discord.TextChannel):
+            is_mod = False
+            for role in message.author.roles:
+                if role.name == "Moderators":
+                    is_mod = True
 
-        if message.author.id == 227187657715875841 and message.content.lower()=="system;stats":
-            wb = Workbook()
-            ws = wb.active
-            row = 1
-            await message.channel.send("Storing user info...")
-            for member in message.guild.members:
-                ws['A{}'.format(row)] = member.joined_at
-                ws['B{}'.format(row)] = member.id
-                ws['C{}'.format(row)] = member.name
-                row = row + 1
-            ws1 = wb.create_sheet("Channels")
-            row = 1
-            for channel in message.guild.text_channels:
-                await message.channel.send("""Storing channel <#{}>...""".format(channel.id))
-                try:
-                    async for a_message in channel.history(limit=1000000):
-                        ws1['A{}'.format(row)] = a_message.created_at
-                        ws1['B{}'.format(row)] = a_message.channel.id
-                        ws1['C{}'.format(row)] = a_message.channel.name
-                        ws1['D{}'.format(row)] = a_message.id
-                        ws1['E{}'.format(row)] = a_message.author.id
-                        ws1['F{}'.format(row)] = a_message.author.name
-                        ws1['G{}'.format(row)] = a_message.content
-                        row=row+1
-                except:
-                    await message.channel.send("Error in storing channel")
-            wb.save("data1.xlsx")
-            await message.channel.send("Complete.")
+            if message.author.id == 227187657715875841 and message.content.lower()=="system;stats":
+                os.mknod("audit.db")
+                stats_connection = sqlite3.connect("audit.db")
+                stats_cursor = stats_connection.cursor()
+                await message.channel.send("Storing user info...")
+                sql_command = """
+                    CREATE TABLE userInfo (
+                    memberID INTEGER PRIMARY KEY,
+                    memberName VARCHAR(256),
+                    joinDate VARCHAR(128));"""
+                stats_cursor.execute(sql_command)
+                stats_connection.commit()
                 
-        if message.channel.name != "bot-commands" and message.content.startswith('.') and not is_mod:
-            silenced = add_spam_time(message.author.id)
-            if silenced:
-                await message.author.send(
-                    "Do not spam the bot outside #bot-commands, please wait a bit before using the bot again")
+                for member in message.guild.members:
+                    print(member.name)
+                    sql_command = """INSERT INTO userInfo (memberID, memberName, joinDate)
+                        VALUES ({0}, "{1}", "{2}");""".format(member.id, member.name.replace('"', "``"), member.joined_at).replace("'", "`")
+                    stats_cursor.execute(sql_command)
+                    
+                stats_connection.commit()
+                sql_command = """
+                    CREATE TABLE messages (
+                    messageID INTEGER PRIMARY KEY,
+                    messageDate VARCHAR(128),
+                    messageContent VARCHAR(2500),
+                    channelID INTEGER,
+                    channelName VARCHAR(128),
+                    authorID INTEGER);"""
+                stats_cursor.execute(sql_command)
+                stats_connection.commit()
+                
+                for channel in message.guild.text_channels:
+                    active_mes = await message.channel.send("""Storing channel <#{}>...""".format(channel.id))
+                    row = 1
+                    try:
+                        async for a_message in channel.history(limit=1000000):
+                            sql_command = """INSERT INTO messages (messageID, messageDate, messageContent, channelID, channelName, authorID)
+                                VALUES ({0}, "{1}", "{2}", {3}, "{4}", {5});""".format(a_message.id, a_message.created_at, a_message.content.replace('"', "``"), a_message.channel.id, a_message.channel.name, a_message.author.id).replace("'", "`")
+                            stats_cursor.execute(sql_command)
+                            if row % 1000 == 0:
+                                await active_mes.edit(content="""Storing channel <#{0}>...\nStored {1}k messages""".format(channel.id, row/1000))
+                            row=row+1
+                        await active_mes.edit(content="""Storing channel <#{}>...\nComplete""".format(channel.id))
+                    except:
+                        await active_mes.edit(content="""Storing channel <#{}>...\nError in storing channel""".format(channel.id))
+                        
+                    stats_connection.commit()
+                await message.channel.send("Audit Complete.")
+                    
+            if message.channel.name != "bot-commands" and message.content.startswith('.') and not is_mod:
+                silenced = add_spam_time(message.author.id)
+                if silenced:
+                    await message.author.send(
+                        "Do not spam the bot outside #bot-commands, please wait a bit before using the bot again")
+                else:
+                    await bot.process_commands(message)
             else:
                 await bot.process_commands(message)
+                
         else:
-            await bot.process_commands(message)
+            the_channel = discord.utils.get(bot.get_all_channels(), guild__name="Door Monster", name="modmail-inbox")
+            member = discord.utils.find(lambda m: m.id == message.author.id, the_channel.guild.members)
+            if member is not None:
+                await the_channel.send("<@&701867961769525329> <@{0}> calls for aid!```{1}```".format(member.id, message.content.replace("`","`")))
+                await member.send("Your message has been forwarded to the moderators")
 
 
 async def remind_user():
@@ -358,7 +353,7 @@ async def keep_activity_up():
     await bot.wait_until_ready()
     while not bot.is_closed():
         await asyncio.sleep(3600)
-        await bot.change_presence(activity=discord.Game(name='with your code'))
+        await bot.change_presence(activity=discord.Game(name='Message me for modmail'))
 
 bot.loop.create_task(remind_user())
 bot.loop.create_task(spamreduce())

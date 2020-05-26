@@ -109,8 +109,8 @@ class Music(commands.Cog):
     @commands.command()
     async def summon(self, ctx):
         """Summons the bot to join your voice channel."""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Music Bot commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Music Bot commands are only available in <#701868237771505695>")
         if self.music_off:
             return await ctx.send("**Error:** Music Bot features are currently off")
 
@@ -154,8 +154,8 @@ class Music(commands.Cog):
     @commands.command()
     async def yt(self, ctx, *, url):
         """Streams from a url (almost anything youtube_dl supports)"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Music Bot commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Music Bot commands are only available in <#701868237771505695>")
         if self.music_off:
             return await ctx.send("**Error:** Music Bot features are currently off")
         if ctx.voice_client is None:
@@ -190,7 +190,7 @@ class Music(commands.Cog):
     #	async def volume(self, ctx, volume: int):
     #		"""Changes the player's volume"""
     #		if(ctx.message.channel.name != "bot-commands"):
-    #			return await ctx.send("**Error:** Music Bot commands are only available in #bot-commands")
+    #			return await ctx.send("**Error:** Music Bot commands are only available in <#701868237771505695>")
     #		if(self.music_off):
     #			return await ctx.send("**Error:** Music Bot features are currently off")
     #
@@ -205,8 +205,8 @@ class Music(commands.Cog):
     @commands.command()
     async def disconnect(self, ctx):
         """Stops and disconnects the bot from voice"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Music Bot commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Music Bot commands are only available in <#701868237771505695>")
         if self.music_off:
             return await ctx.send("**Error:** Music Bot features are currently off")
         if ctx.voice_client is None or ctx.voice_client is not self.voice:
@@ -225,8 +225,8 @@ class Music(commands.Cog):
     @commands.command()
     async def skip(self, ctx):
         """Stops or skips current song"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Music Bot commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Music Bot commands are only available in <#701868237771505695>")
         if self.music_off:
             return await ctx.send("**Error:** Music Bot features are currently off")
         if ctx.voice_client is None or ctx.voice_client is not self.voice:
@@ -234,7 +234,7 @@ class Music(commands.Cog):
 
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
         if is_mod or ctx.message.author.id == self.songs[0][1]:
             await ctx.send("Skipping song...")
@@ -252,8 +252,8 @@ class Music(commands.Cog):
     @commands.command()
     async def pause(self, ctx):
         """Pauses/unpauses current song"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Music Bot commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Music Bot commands are only available in <#701868237771505695>")
         if self.music_off:
             return await ctx.send("**Error:** Music Bot features are currently off")
         if ctx.voice_client is None or ctx.voice_client is not self.voice:
@@ -269,8 +269,8 @@ class Music(commands.Cog):
     @commands.command()
     async def queue(self, ctx, *args):
         """Shows you the currently queued songs"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Music Bot commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Music Bot commands are only available in <#701868237771505695>")
         if self.music_off:
             return await ctx.send("**Error:** Music Bot features are currently off")
         if ctx.voice_client is None or ctx.voice_client is not self.voice:
@@ -278,7 +278,7 @@ class Music(commands.Cog):
 
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
 
         queue_string = "```"
@@ -325,7 +325,7 @@ class Music(commands.Cog):
         """Activates/deactivates Music Bot features [MOD ONLY]"""
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
         if is_mod:
             if the_state == "1":

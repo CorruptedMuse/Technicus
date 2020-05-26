@@ -31,8 +31,8 @@ class Role(commands.Cog):
     @commands.command()
     async def addrole(self, ctx, *args_role: str):
         """Adds a role to a user"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Role commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Role commands are only available in <#701868237771505695>")
 
         the_role = self.merge_strings(args_role)
         if discord.utils.get(ctx.message.guild.roles, name=the_role) is None:
@@ -58,8 +58,8 @@ class Role(commands.Cog):
     @commands.command()
     async def delrole(self, ctx, *args_role: str):
         """Removes a role from a user"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Role commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Role commands are only available in <#701868237771505695>")
 
         the_role = self.merge_strings(args_role)
         if discord.utils.get(ctx.message.guild.roles, name=the_role) is None:
@@ -85,13 +85,13 @@ class Role(commands.Cog):
     @commands.command()
     async def editrole(self, ctx, edit, *args_role: str):
         """Creates/deletes a pingable role for the server [MOD ONLY]"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Role commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Role commands are only available in <#701868237771505695>")
 
         the_role = self.merge_strings(args_role)
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
         if is_mod:
             if discord.utils.get(ctx.message.guild.roles, name=the_role) is None:
@@ -119,11 +119,12 @@ class Role(commands.Cog):
     @commands.command()
     async def rolelist(self, ctx):
         """Displays the list of roles that you can add to yourself"""
-        if ctx.message.channel.name != "bot-commands":
-            return await ctx.send("**Error:** Role commands are only available in #bot-commands")
+        if ctx.message.channel.id != 701868237771505695:
+            return await ctx.send("**Error:** Role commands are only available in <#701868237771505695>")
 
-        message = "```"
+        message = "```Pronoun Roles:\n - They/Them\n - She/Her\n - He/Him\n\n Gaming Roles:\n"
         for a_good_role in self.good_roles:
-            message = message + a_good_role + "\n"
-        message = message + "```"
+            if a_good_role not in ['They/Them', 'She/Her', 'He/Him']:
+                message = "{0} - {1}\n".format(message,a_good_role)
+        message =  "{}```".format(message)
         await ctx.send(message)

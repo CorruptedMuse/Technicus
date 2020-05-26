@@ -128,6 +128,9 @@ class Connect(commands.Cog):
             return await ctx.send("**Error:** This command is only available in #bot-commands")
             
         if args[0].lower() == "challenge":
+            if self.game is not None:
+                if self.game['Winstate'] == -1:
+                    return await ctx.send("**Error:** There is already a ongoing game!")
             if self.challenger is not None and self.challenger != ctx.message.author.id:
                 return await ctx.send("**Error:** There is already a pending challenge!")
             try:

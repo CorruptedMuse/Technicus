@@ -4,7 +4,7 @@ import sqlite3
 import random
 import time
 import asyncio
-from commonFunctions import log, merge_strings
+from commonFunctions import log, merge_strings, find_user
 
 version = 3
 
@@ -21,7 +21,7 @@ class Mod(commands.Cog):
         """Delete a lot of channel history [MOD ONLY]"""
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
         if not is_mod:
             return await ctx.send("**Error:** You do not have permission to use this command!")
@@ -35,13 +35,11 @@ class Mod(commands.Cog):
         """Prevent someone from using the bot or reverse the ban [MOD ONLY]"""
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
         if not is_mod:
             return await ctx.send("**Error:** You do not have permission to use this command!")
-        member = discord.utils.get(ctx.message.guild.members, name=merge_strings(args_member))
-        if member is None:
-            return await ctx.send("**Error:** User not found")
+        member = find_user(ctx.message, args)
         if member.id == 227187657715875841:
             return await ctx.send("**Error:** This user is very important and cannot be banned!")
         self.cursor.execute("SELECT * FROM botBans")
@@ -82,7 +80,7 @@ class Mod(commands.Cog):
     async def lock(self, ctx, channel_name, *time_data: str):
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
         if not is_mod:
             return await ctx.send("**Error:** You are not allowed to use this command!")
@@ -92,7 +90,7 @@ class Mod(commands.Cog):
         
         is_locked = False
         
-        for over in the_channel.overwrites_for(discord.utils.get(ctx.message.guild.roles, name="Patron")):
+        for over in the_channel.overwrites_for(ctx.guild.default_role):
             if over[0] == "send_messages":
                 if over[1] == False:
                     is_locked = True
@@ -114,19 +112,12 @@ class Mod(commands.Cog):
             except Exception:
                 await ctx.send("""**Error:** Correct usage is `.lock <channel> <>d <>h <>m <>s`""")
                 return
-        
-        kick_role = discord.utils.get(ctx.message.guild.roles, name="KickstarterBacker")
-        patron_role = discord.utils.get(ctx.message.guild.roles, name="Patron")
-        kick_overwrite = the_channel.overwrites_for(kick_role)
-        patron_overwrite = the_channel.overwrites_for(patron_role)
+        overwrite = the_channel.overwrites_for(ctx.guild.default_role)
         if is_locked:
-            kick_overwrite.send_messages = None
-            patron_overwrite.send_messages = None
+            overwrite.send_messages = None
         else:
-            kick_overwrite.send_messages = False
-            patron_overwrite.send_messages = False
-        await the_channel.set_permissions(kick_role, overwrite=kick_overwrite)
-        await the_channel.set_permissions(patron_role, overwrite=patron_overwrite)
+            overwrite.send_messages = False
+        await the_channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
         if is_locked:
             return await ctx.send("Unlocked channel {}".format(the_channel.name))
         else:
@@ -137,15 +128,14 @@ class Mod(commands.Cog):
                 await asyncio.sleep(wait_time)
                 kick_overwrite.send_messages = None
                 patron_overwrite.send_messages = None
-                await the_channel.set_permissions(kick_role, overwrite=kick_overwrite)
-                await the_channel.set_permissions(patron_role, overwrite=patron_overwrite)
+                await the_channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
                 await ctx.send("Unlocked channel {}".format(the_channel.name))
            
     @commands.command()
     async def silence(self, ctx, member_name: str, reason: str, *time_data: str):
         is_mod = False
         for role in ctx.message.author.roles:
-            if role.name == "Bot Mod":
+            if role.name == "Moderators":
                 is_mod = True
         if not is_mod:
             return await ctx.send("**Error:** You are not allowed to use this command!")
@@ -221,13 +211,10 @@ class Mod(commands.Cog):
                         member = guild.get_member(r[0])
                         if member is not None:
                             await member.remove_roles(discord.utils.get(guild.roles, name="Silenced"))
-                            for role in member.roles:
-                                if role.name == "linked":
-                                    await member.add_roles(discord.utils.get(member.guild.roles, name="Patron"))
                                     
                             log("User unsilenced", member, None, r[1], None)
-                            mod_channel = self.bot.get_channel(496618677228273665)
-                            await mod_channel.send("<@&496616256045056001> User {} has been un-silenced".format(member.name))
+                            mod_channel = self.bot.get_channel(701870289491067001)
+                            await mod_channel.send("<@&701867961769525329> User {} has been un-silenced".format(member.name))
                     to_be_deleted.append(r[0])
             for authorID in to_be_deleted:
                 self.cursor.execute("DELETE FROM silenced WHERE authorID={0}".format(authorID))
